@@ -1,3 +1,4 @@
+# Import necessary libraries and modules
 import argparse
 import os
 from helpers import *
@@ -10,7 +11,7 @@ from nemo.collections.asr.models.msdd_models import NeuralDiarizer
 from deepmultilingualpunctuation import PunctuationModel
 import re
 
-# Initialize parser
+# Initialize argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-a", "--audio", help="name of the target audio file", required=True
@@ -31,12 +32,12 @@ parser.add_argument(
     help="name of the Whisper model to use",
 )
 
+# Parse command-line arguments
 args = parser.parse_args()
 
-
+# Perform source separation if enabled
 if args.stemming:
     # Isolate vocals from the rest of the audio
-
     return_code = os.system(
         f'python3 -m demucs.separate -n htdemucs_ft --two-stems=vocals "{args.audio}" -o "temp_outputs"'
     )
@@ -47,20 +48,21 @@ if args.stemming:
         )
         vocal_target = args.audio
     else:
-        vocal_target = f"temp_outputs/htdemucs_ft/{args.audio[:-4]}/vocals.wav"
+        temp_file_path= os.path.splitext(os.path.basename(args.audio))[0]
+        vocal_target = f"temp_outputs/htdemucs_ft/{temp_file_path}/vocals.wav"
 else:
     vocal_target = args.audio
 
-
-# Large models result in considerably better and more aligned (words, timestamps) mapping.
+# Load the Whisper ASR model and transcribe the audio
 whisper_model = load_model(args.model_name)
 whisper_results = whisper_model.transcribe(vocal_target, beam_size=None, verbose=False)
 
-# clear gpu vram
+# Clear GPU memory
 del whisper_model
 torch.cuda.empty_cache()
 
-device = "cuda"
+# Load the Whisper alignment model and align words with timestamps
+device = "cuda" if torch.cuda.is_available() else "cpu"
 alignment_model, metadata = whisperx.load_align_model(
     language_code=whisper_results["language"], device=device
 )
@@ -68,11 +70,11 @@ result_aligned = whisperx.align(
     whisper_results["segments"], alignment_model, metadata, vocal_target, device
 )
 
-# clear gpu vram
+# Clear GPU memory
 del alignment_model
 torch.cuda.empty_cache()
 
-# convert audio to mono for NeMo combatibility
+# Convert audio to mono for NeMo compatibility
 signal, sample_rate = librosa.load(vocal_target, sr=None)
 ROOT = os.getcwd()
 temp_path = os.path.join(ROOT, "temp_outputs")
@@ -81,15 +83,20 @@ if not os.path.exists(temp_path):
 os.chdir(temp_path)
 soundfile.write("mono_file.wav", signal, sample_rate, "PCM_24")
 
-# Initialize NeMo MSDD diarization model
-msdd_model = NeuralDiarizer(cfg=create_config()).to("cuda")
+# Initialize NeMo MSDD diarization model and perform diarization
+config = create_config()
+
+if device == "cpu":
+    config.num_workers = 0
+
+msdd_model = NeuralDiarizer(cfg=config).to(device)
 msdd_model.diarize()
 
+# Clear GPU memory
 del msdd_model
 torch.cuda.empty_cache()
 
-# Reading timestamps <> Speaker Labels mapping
-
+# Read speaker timestamps and labels from the output file
 output_dir = "nemo_outputs"
 
 speaker_ts = []
@@ -101,20 +108,25 @@ with open(f"{output_dir}/pred_rttms/mono_file.rttm", "r") as f:
         e = s + int(float(line_list[8]) * 1000)
         speaker_ts.append([s, e, int(line_list[11].split("_")[-1])])
 
+# Map words to speakers using timestamps
 wsm = get_words_speaker_mapping(result_aligned["word_segments"], speaker_ts, "start")
 
+# Restore punctuation in the transcript if the language is supported
 if whisper_results["language"] in punct_model_langs:
-    # restoring punctuation in the transcript to help realign the sentences
+    # Load punctuation model
     punct_model = PunctuationModel(model="kredor/punctuate-all")
 
+    # Get list of words from the word-speaker mapping
     words_list = list(map(lambda x: x["word"], wsm))
 
+    # Predict punctuation for the words
     labled_words = punct_model.predict(words_list)
 
+    # Add predicted punctuation to the words in the word-speaker mapping
     ending_puncts = ".?!"
     model_puncts = ".,;:!?"
 
-    # We don't want to punctuate U.S.A. with a period. Right?
+    # Function to check if a word is an acronym
     is_acronym = lambda x: re.fullmatch(r"\b(?:[a-zA-Z]\.){2,}", x)
 
     for word_dict, labeled_tuple in zip(wsm, labled_words):
@@ -129,19 +141,26 @@ if whisper_results["language"] in punct_model_langs:
                 word = word.rstrip(".")
             word_dict["word"] = word
 
+    # Realign word-speaker mapping with punctuation
     wsm = get_realigned_ws_mapping_with_punctuation(wsm)
 else:
     print(
         f'Punctuation restoration is not available for {whisper_results["language"]} language.'
     )
 
+# Get sentence-speaker mapping from the word-speaker mapping
 ssm = get_sentences_speaker_mapping(wsm, speaker_ts)
 
-os.chdir(ROOT)  # back to parent dir
+# Change back to the parent directory
+os.chdir(ROOT)
+
+# Write speaker-aware transcript to a text file
 with open(f"{args.audio[:-4]}.txt", "w", encoding="utf-8-sig") as f:
     get_speaker_aware_transcript(ssm, f)
 
+# Write speaker-aware subtitles to an SRT file
 with open(f"{args.audio[:-4]}.srt", "w", encoding="utf-8-sig") as srt:
     write_srt(ssm, srt)
 
+# Clean up temporary files and directories
 cleanup(temp_path)
