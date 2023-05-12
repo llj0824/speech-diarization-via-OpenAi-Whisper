@@ -1,3 +1,8 @@
 # Get audio file from youtube link
 
-$ youtube-dl -x --postprocessor-args "-t 00:10:00" --audio-format wav -o "<OUTPUT_FILE.wav" "<YOUTUBE_LINK>"
+$ youtube-dl -x --no-playlist --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 10M" --audio-format wav -o "<OUTPUT_FILE>.%(ext)s" "<YOUTUBE_LINK>"
+
+Note: it seems download speed drastically speeds up by increasing "-k" (buffer size) setting. Default is 1M.
+
+# Get segment of audio file
+$ ffmpeg -i {input_file}.wav -t 00:10:00 {output_file}.wav

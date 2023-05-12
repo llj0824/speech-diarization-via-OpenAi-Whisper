@@ -324,6 +324,4 @@ def trace_time_usage(callback, *args, **kwargs):
 
 def print_time_usage(start_time, end_time, description): 
     time_taken = end_time - start_time
-    function_name = callback.__name__
     print(f"Time taken for {description}: {time_taken:.2f} seconds")
-    return result
