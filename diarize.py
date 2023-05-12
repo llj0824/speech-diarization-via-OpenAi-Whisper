@@ -10,6 +10,7 @@ import soundfile
 from nemo.collections.asr.models.msdd_models import NeuralDiarizer
 from deepmultilingualpunctuation import PunctuationModel
 import re
+import time
 
 # Initialize argument parser
 parser = argparse.ArgumentParser()
@@ -28,7 +29,7 @@ parser.add_argument(
 parser.add_argument(
     "--whisper-model",
     dest="model_name",
-    default="medium.en",
+    default="tiny",
     help="name of the Whisper model to use",
 )
 
@@ -36,6 +37,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # Perform source separation if enabled
+source_seperation_start_time = time.time()
 if args.stemming:
     # Isolate vocals from the rest of the audio
     return_code = os.system(
@@ -52,10 +54,16 @@ if args.stemming:
         vocal_target = f"temp_outputs/htdemucs_ft/{temp_file_path}/vocals.wav"
 else:
     vocal_target = args.audio
+source_seperation_end_time = end_time = time.time()
+print_time_usage(
+  start_time = source_seperation_start_time,
+  end_time = source_seperation_end_time,
+  description= "Source Seperation"
+)
 
 # Load the Whisper ASR model and transcribe the audio
-whisper_model = load_model(args.model_name)
-whisper_results = whisper_model.transcribe(vocal_target, beam_size=None, verbose=False)
+whisper_model = trace_time_usage(load_model, args.model_name)
+whisper_results = trace_time_usage(whisper_model.transcribe, vocal_target, beam_size=None, verbose=False)
 
 # Clear GPU memory
 del whisper_model
