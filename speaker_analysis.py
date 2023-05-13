@@ -36,6 +36,7 @@ with open(file_path, 'r') as file:
 # Convert the list into a DataFrame
 df = pd.DataFrame(data, columns=['Index', 'Time', 'Speaker', 'Text'])
 
+## Speech Duration ##
 # Function to calculate the duration in seconds from a time range string
 def calculate_duration(time_range):
     start_time_str, end_time_str = time_range.split(' --> ')
@@ -61,3 +62,21 @@ print(speaker_duration.round(2).astype(str) + " seconds")
 
 print("\nSpeaker duration as % of total audio file:")
 print(speaker_duration_percentage.round(2).astype(str) + " %")
+
+
+## Speech Rate ##
+# Function to count words in a text
+def word_count(text):
+    return len(text.split())
+
+# Apply the word_count function to the 'Text' column
+df['WordCount'] = df['Text'].apply(word_count)
+
+# Calculate the total number of words spoken by each speaker
+speaker_wordcount = df.groupby('Speaker')['WordCount'].sum()
+
+# Calculate the speech rate (words per minute) for each speaker
+speaker_speech_rate = (speaker_wordcount / speaker_duration) * 60
+
+print("\nSpeech rate (words per minute):")
+print(speaker_speech_rate.round(2).astype(str) + " words per minute")
