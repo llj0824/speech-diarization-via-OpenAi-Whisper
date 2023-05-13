@@ -78,9 +78,5 @@ speaker_wordcount = df.groupby('Speaker')['WordCount'].sum()
 # Calculate the speech rate (words per minute) for each speaker
 speaker_speech_rate = (speaker_wordcount / speaker_duration) * 60
 
-# Display the results
-print("\nSpeaker word count:")
-print(speaker_wordcount)
-
 print("\nSpeech rate (words per minute):")
-print(speaker_speech_rate.round(2) + " per minute")
+print(speaker_speech_rate.round(2).astype(str) + " words per minute")
