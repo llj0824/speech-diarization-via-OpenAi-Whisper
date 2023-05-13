@@ -93,9 +93,7 @@ filler_words = [
     'literally',
     'I mean',
     'well',
-    'I think',
-    'you know what I mean',
-    'know what I\'m saying'
+    'I think'
 ]
 
 # Function to count the occurrences of filler words in a text
@@ -121,14 +119,8 @@ df['FillerWordCounts'] = df['Text'].apply(count_filler_words)
 speaker_filler_word_counts = df.groupby('Speaker')['FillerWordCounts'].apply(lambda x: reduce(merge_dicts, x))
 
 # Convert the dictionary to a DataFrame
-filler_word_counts_df = pd.DataFrame(list(speaker_filler_word_counts.items()), columns=['Speaker', 'FillerWordCounts'])
-
-# Expand the dictionary of filler word counts into columns and concatenate with the Speaker column
-filler_word_counts_expanded = pd.concat([filler_word_counts_df['Speaker'], filler_word_counts_df['FillerWordCounts'].apply(pd.Series)], axis=1)
-
-# Fill NaN values with 0
-filler_word_counts_expanded.fillna(0, inplace=True)
+filler_word_counts_df = pd.DataFrame(list(speaker_filler_word_counts.items()), columns=['Speaker', 'Words'])
 
 # Print the table
 print("\nOccurrences of filler words per speaker:")
-print(filler_word_counts_expanded)
+print(filler_word_counts_df)
