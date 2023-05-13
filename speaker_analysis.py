@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 from datetime import datetime
+from functools import reduce
 
 # Ask the user for the input file path
 file_path = input("Please enter the path to the .srt file: ")
@@ -36,7 +37,7 @@ with open(file_path, 'r') as file:
 # Convert the list into a DataFrame
 df = pd.DataFrame(data, columns=['Index', 'Time', 'Speaker', 'Text'])
 
-## Speech Duration ##
+## Section 1 - Speech Duration ##
 # Function to calculate the duration in seconds from a time range string
 def calculate_duration(time_range):
     start_time_str, end_time_str = time_range.split(' --> ')
@@ -57,14 +58,15 @@ total_duration = df['Duration'].sum()
 speaker_duration_percentage = (speaker_duration / total_duration) * 100
 
 # Display the results
-print("Speaker duration (in seconds):")
-print(speaker_duration.round(2).astype(str) + " seconds")
-
 print("\nSpeaker duration as % of total audio file:")
 print(speaker_duration_percentage.round(2).astype(str) + " %")
 
+print("Speaker aggregate duration (in seconds):")
+print(speaker_duration.round(2).astype(str) + " seconds")
 
-## Speech Rate ##
+
+
+## Section 2 - Speech Rate ##
 # Function to count words in a text
 def word_count(text):
     return len(text.split())
@@ -80,3 +82,53 @@ speaker_speech_rate = (speaker_wordcount / speaker_duration) * 60
 
 print("\nSpeech rate (words per minute):")
 print(speaker_speech_rate.round(2).astype(str) + " words per minute")
+
+## Section 3 - Filler words ##
+filler_words = [
+    'um',
+    'uh',
+    'like',
+    'you know',
+    'so',
+    'literally',
+    'I mean',
+    'well',
+    'I think',
+    'you know what I mean',
+    'know what I\'m saying'
+]
+
+# Function to count the occurrences of filler words in a text
+def count_filler_words(text):
+    count = {}
+    words = text.split()
+    for word in words:
+        if word.lower() in filler_words:
+            count[word.lower()] = count.get(word.lower(), 0) + 1
+    return count
+
+# Function to merge two dictionaries
+def merge_dicts(a, b):
+    result = a.copy()
+    for key, value in b.items():
+        result[key] = result.get(key, 0) + value
+    return result
+
+# Apply the count_filler_words function to the 'Text' column
+df['FillerWordCounts'] = df['Text'].apply(count_filler_words)
+
+# Aggregate the filler word counts per speaker
+speaker_filler_word_counts = df.groupby('Speaker')['FillerWordCounts'].apply(lambda x: reduce(merge_dicts, x))
+
+# Convert the dictionary to a DataFrame
+filler_word_counts_df = pd.DataFrame(list(speaker_filler_word_counts.items()), columns=['Speaker', 'FillerWordCounts'])
+
+# Expand the dictionary of filler word counts into columns and concatenate with the Speaker column
+filler_word_counts_expanded = pd.concat([filler_word_counts_df['Speaker'], filler_word_counts_df['FillerWordCounts'].apply(pd.Series)], axis=1)
+
+# Fill NaN values with 0
+filler_word_counts_expanded.fillna(0, inplace=True)
+
+# Print the table
+print("\nOccurrences of filler words per speaker:")
+print(filler_word_counts_expanded)
