@@ -29,7 +29,7 @@ parser.add_argument(
 parser.add_argument(
     "--whisper-model",
     dest="model_name",
-    default="tiny",
+    default="large",
     help="name of the Whisper model to use",
 )
 
