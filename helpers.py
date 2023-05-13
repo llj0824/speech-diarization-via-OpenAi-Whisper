@@ -3,6 +3,8 @@ import wget
 from omegaconf import OmegaConf
 import json
 import shutil
+# For profiling performance bottlenecks
+import time
 
 punct_model_langs = [
     "en",
@@ -310,3 +312,16 @@ def cleanup(path: str):
         shutil.rmtree(path)
     else:
         raise ValueError("Path {} is not a file or dir.".format(path))
+
+def trace_time_usage(callback, *args, **kwargs):
+    start_time = time.time()
+    result = callback(*args, **kwargs)
+    end_time = time.time()
+    time_taken = end_time - start_time
+    function_name = callback.__name__
+    print(f"Time taken for {function_name}: {time_taken:.2f} seconds")
+    return result
+
+def print_time_usage(start_time, end_time, description): 
+    time_taken = end_time - start_time
+    print(f"Time taken for {description}: {time_taken:.2f} seconds")
