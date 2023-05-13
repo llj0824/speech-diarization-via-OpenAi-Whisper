@@ -41,7 +41,7 @@ source_seperation_start_time = time.time()
 if args.stemming:
     # Isolate vocals from the rest of the audio
     return_code = os.system(
-        f'python3 -m demucs.separate -n htdemucs --two-stems=vocals "{args.audio}" -o "temp_outputs"'
+        f'python3 -m demucs.separate -n htdemucs_ft --two-stems=vocals "{args.audio}" -o "temp_outputs"'
     )
 
     if return_code != 0:
@@ -51,7 +51,7 @@ if args.stemming:
         vocal_target = args.audio
     else:
         temp_file_path= os.path.splitext(os.path.basename(args.audio))[0]
-        vocal_target = f"temp_outputs/htdemucs/{temp_file_path}/vocals.wav"
+        vocal_target = f"temp_outputs/htdemucs_ft/{temp_file_path}/vocals.wav"
 else:
     vocal_target = args.audio
 source_seperation_end_time = end_time = time.time()
