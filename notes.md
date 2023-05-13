@@ -1,3 +1,13 @@
+# Usage
+## Enter Python environemnt
+$ python env/bin/activate
+
+## Generate .srt for episode
+$ python diarize.py --whisper-model large -a sample/ep20_full.mp3
+
+## Generate analysis for .srt
+$ python speaker_analysis.py
+
 # Get audio file from youtube link
  
 $ youtube-dl -f bestaudio -x --no-playlist --external-downloader aria2c --external-downloader-args "-x 16 -s 16 -k 10M" --audio-format wav -o "<OUTPUT_FILE>.%(ext)s" "<YOUTUBE_LINK>"
